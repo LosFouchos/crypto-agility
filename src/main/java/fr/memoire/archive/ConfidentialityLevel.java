@@ -2,6 +2,6 @@ package fr.memoire.archive;
 
 public enum ConfidentialityLevel {
 
-    INTERNE, CONFIDENCIEL, SECRET
+    INTERNE, CONFIDENTIEL, SECRET
 
 }
