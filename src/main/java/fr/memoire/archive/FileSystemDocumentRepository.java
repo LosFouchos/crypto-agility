@@ -85,7 +85,7 @@ public class FileSystemDocumentRepository implements DocumentRepository {
         Objects.requireNonNull(idClient, "IdClient cannot be null");
 
         List<Metadata> result = new ArrayList<>();
-        
+
         try (DirectoryStream<Path> files = Files.newDirectoryStream(directory, "*.properties")) {
             for (Path metadataFile : files) {
                 Metadata metadata = readMetadata(metadataFile);
