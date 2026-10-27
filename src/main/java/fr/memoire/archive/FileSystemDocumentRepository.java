@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 import java.time.Period;
 import java.util.*;
@@ -30,7 +31,7 @@ public class FileSystemDocumentRepository implements DocumentRepository {
         UUID id = metadata.idDocument();
 
         Path contentFile = directory.resolve(id + ".bin");
-        Files.write(contentFile, document.content());
+        Files.write(contentFile, document.content(), StandardOpenOption.CREATE_NEW);
 
         Properties properties = new Properties();
         properties.setProperty(KEY_ID_DOCUMENT, id.toString());
@@ -41,7 +42,7 @@ public class FileSystemDocumentRepository implements DocumentRepository {
         properties.setProperty(KEY_DURATION_CONSERVATION, metadata.durationConservation().toString());
 
         Path metadataFile = directory.resolve(id + ".properties");
-        try (var writer = Files.newBufferedWriter(metadataFile)) {
+        try (var writer = Files.newBufferedWriter(metadataFile, StandardOpenOption.CREATE_NEW)) {
             properties.store(writer, null);
         }
     }

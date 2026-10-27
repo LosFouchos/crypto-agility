@@ -83,4 +83,14 @@ class FileSystemDocumentRepositoryTest {
 
         assertTrue(result.isEmpty());
     }
+
+    @Test
+    void metadataToBytes() throws IOException {
+        Document original = documentFor("CLI-0001");
+
+        repository.save(original);
+        Document reread = repository.findById(original.metadata().idDocument()).orElseThrow();
+
+        assertArrayEquals(original.metadata().toBytes(), reread.metadata().toBytes());
+    }
 }

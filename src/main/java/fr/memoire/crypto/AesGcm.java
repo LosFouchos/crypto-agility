@@ -11,7 +11,7 @@ import java.util.Objects;
 
 public final class AesGcm {
 
-    // Paramètres écrits en dur : c'est volontaire pour la version « naïve »
+    // Paramètres écrits en dur
     private static final String TRANSFORMATION = "AES/GCM/NoPadding";
     private static final int KEY_SIZE_BITS = 256;
     private static final int NONCE_SIZE_BYTES = 12;
@@ -63,7 +63,7 @@ public final class AesGcm {
 
         byte[] nonce = Arrays.copyOfRange(nonceAndCiphertext, 0, NONCE_SIZE_BYTES);
 
-        //Déchiffrement + vérification d'intégrité, en une seule opération
+        //Déchiffrement + vérification d'intégrité
         Cipher cipher = Cipher.getInstance(TRANSFORMATION);
         cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(TAG_SIZE_BITS, nonce));
         cipher.updateAAD(aad);

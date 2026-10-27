@@ -1,5 +1,9 @@
 package fr.memoire.archive;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.time.Instant;
 import java.time.Period;
 import java.util.Objects;
@@ -21,4 +25,20 @@ public record Metadata(UUID idDocument, ConfidentialityLevel confidentialityLeve
             throw new IllegalArgumentException("DurationConservation cannot be zero");
         }
     }
+
+    public byte[] toBytes(){
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        try (DataOutputStream out = new DataOutputStream(buffer)) {
+            out.writeUTF(idDocument.toString());
+            out.writeUTF(confidentialityLevel.name());
+            out.writeUTF(docType.name());
+            out.writeUTF(idClient);
+            out.writeUTF(dateDepot.toString());
+            out.writeUTF(durationConservation.toString());
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        return buffer.toByteArray();
+    }
+
 }
