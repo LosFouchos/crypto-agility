@@ -11,10 +11,10 @@ import static org.junit.jupiter.api.Assertions.*;
 class PolicyFileTest {
 
     @Test
-    void policyFileIsValidAndPostQuantum() throws IOException {
+    void policyFileIsValidAndHybrid() throws IOException {
         CryptoPolicy policy = CryptoPolicy.load(Path.of("crypto-policy.properties"));
 
-        assertEquals("ML-KEM-768-HKDF-SHA256-AESKW256", policy.writeKeyProtection());
+        assertEquals("X25519-ML-KEM-768-HKDF-SHA256-AESKW256", policy.writeKeyProtection());
         assertEquals("ML-DSA-65", policy.writeSignature());
         assertEquals(AlgorithmState.READ_ONLY, policy.stateOf("RSA-OAEP-3072-SHA256"));
     }

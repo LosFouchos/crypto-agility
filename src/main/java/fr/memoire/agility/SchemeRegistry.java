@@ -21,6 +21,8 @@ import fr.memoire.crypto.MlDsaScheme;
 import fr.memoire.crypto.MlKemScheme;
 import java.util.ArrayList;
 
+import fr.memoire.crypto.HybridX25519MlKemScheme;
+
 // Briques disponibles, chacune avec ses clés, retrouvées par leur identifiant
 public final class SchemeRegistry {
 
@@ -44,11 +46,13 @@ public final class SchemeRegistry {
         KeyPair ecdsa = loadIfPresent(keyDirectory, "ecdsa", "EC");
         KeyPair mlKem = loadIfPresent(keyDirectory, "mlkem", "ML-KEM");
         KeyPair mlDsa = loadIfPresent(keyDirectory, "mldsa", "ML-DSA");
+        KeyPair x25519 = loadIfPresent(keyDirectory, "x25519", "XDH");
 
         List<KeyProtectionScheme> keyProtections = new ArrayList<>();
         List<SignatureScheme> signatures = new ArrayList<>();
         if (rsa != null) keyProtections.add(new RsaOaepScheme(rsa));
         if (mlKem != null) keyProtections.add(new MlKemScheme(mlKem));
+        if (x25519 != null && mlKem != null) keyProtections.add(new HybridX25519MlKemScheme(x25519, mlKem));
         if (ecdsa != null) signatures.add(new EcdsaScheme(ecdsa));
         if (mlDsa != null) signatures.add(new MlDsaScheme(mlDsa));
         LegacyV1Reader legacy = (rsa == null || ecdsa == null) ? null : new LegacyV1Reader(rsa, ecdsa);
