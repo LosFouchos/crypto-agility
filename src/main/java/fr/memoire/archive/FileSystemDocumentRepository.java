@@ -9,6 +9,9 @@ import java.time.Instant;
 import java.time.Period;
 import java.util.*;
 
+import java.nio.file.NoSuchFileException;
+import java.nio.file.StandardCopyOption;
+
 public class FileSystemDocumentRepository implements DocumentRepository {
 
     private final Path directory;
@@ -97,5 +100,34 @@ public class FileSystemDocumentRepository implements DocumentRepository {
         }
 
         return result;
+    }
+
+    @Override
+    public List<UUID> findAllIds() throws IOException {
+        List<UUID> result = new ArrayList<>();
+        try (DirectoryStream<Path> files = Files.newDirectoryStream(directory, "*.properties")) {
+            for (Path metadataFile : files) {
+                String name = metadataFile.getFileName().toString();
+                result.add(UUID.fromString(name.substring(0, name.length() - ".properties".length())));
+            }
+        }
+        return result;
+    }
+
+    @Override
+    public void replaceContent(UUID id, byte[] newContent) throws IOException {
+        Objects.requireNonNull(id, "Id cannot be null");
+        Objects.requireNonNull(newContent, "New content cannot be null");
+
+        Path contentFile = directory.resolve(id + ".bin");
+        if (!Files.exists(directory.resolve(id + ".properties"))) {
+            throw new NoSuchFileException(contentFile.toString());
+        }
+        // Écrire d'abord un fichier temporaire, puis le substituer d'un seul coup :
+        // l'archive n'est jamais à moitié écrite, même en cas d'arrêt brutal
+        Path temporary = directory.resolve(id + ".bin.tmp");
+        Files.write(temporary, newContent);
+        Files.move(temporary, contentFile,
+                StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
     }
 }

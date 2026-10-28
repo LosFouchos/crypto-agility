@@ -1,35 +1,28 @@
 package fr.memoire.service;
 
-
+import fr.memoire.agility.ArchiveCrypto;
+import fr.memoire.agility.ProtectionInfo;
 import fr.memoire.archive.Document;
 import fr.memoire.archive.DocumentRepository;
 import fr.memoire.archive.Metadata;
-import fr.memoire.crypto.AesGcm;
-import fr.memoire.crypto.EcdsaSignature;
-import fr.memoire.crypto.RsaOaep;
 
-import javax.crypto.SecretKey;
-import java.io.*;
+import java.io.IOException;
 import java.security.GeneralSecurityException;
-import java.security.KeyPair;
-import java.security.SignatureException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
+// Service d'archivage. Il ne connaît plus aucun algorithme : toute la cryptographie passe par la couche
 public class ArchiveService {
 
-    private static final int ENVELOPE_SIZE_BYTES = 384;
-
     private final DocumentRepository repository;
-    private final KeyPair rsaKeys;
-    private final KeyPair ecdsaKeys;
+    private final ArchiveCrypto crypto;
 
-    public ArchiveService(DocumentRepository repository, KeyPair rsaKeys, KeyPair ecdsaKeys) {
+    public ArchiveService(DocumentRepository repository, ArchiveCrypto crypto) {
         this.repository = Objects.requireNonNull(repository, "Repository can't be null");
-        this.rsaKeys = Objects.requireNonNull(rsaKeys, "RSA keys cannot be null");
-        this.ecdsaKeys = Objects.requireNonNull(ecdsaKeys, "ECDSA keys cannot be null");
+        this.crypto = Objects.requireNonNull(crypto, "Crypto cannot be null");
     }
 
     public void deposit(Metadata metadata, byte[] content)
@@ -37,30 +30,8 @@ public class ArchiveService {
         Objects.requireNonNull(metadata, "Metadata cannot be null");
         Objects.requireNonNull(content, "Content cannot be null");
 
-        byte[] metadataBytes = metadata.toBytes();
-
-        // Signer les métadonnées et le contenu
-        byte[] signature = EcdsaSignature.sign(ecdsaKeys.getPrivate(),
-                concat(metadataBytes, content));
-
-        //Chiffrer le contenu avec une clé AES neuve
-        SecretKey aesKey = AesGcm.generateKey();
-        byte[] encryptedContent = AesGcm.encrypt(aesKey, content, metadataBytes);
-
-        // Protéger la clé AES avec la clé publique RSA
-        byte[] envelope = RsaOaep.wrapKey(rsaKeys.getPublic(), aesKey);
-
-        // Assembler
-        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        try (DataOutputStream out = new DataOutputStream(buffer)) {
-            out.write(envelope);
-            out.writeShort(signature.length);
-            out.write(signature);
-            out.write(encryptedContent);
-        }
-
-        // Enregistrer
-        repository.save(new Document(metadata, buffer.toByteArray()));
+        byte[] archive = crypto.seal(metadata.toBytes(), content);
+        repository.save(new Document(metadata, archive));
     }
 
     public Optional<Document> consult(UUID id) throws GeneralSecurityException, IOException {
@@ -71,48 +42,37 @@ public class ArchiveService {
             return Optional.empty();
         }
         Metadata metadata = stored.get().metadata();
-        byte[] metadataBytes = metadata.toBytes();
-
-        byte[] envelope;
-        byte[] signature;
-        byte[] encryptedContent;
-        try (DataInputStream in = new DataInputStream(
-                new ByteArrayInputStream(stored.get().content()))) {
-            envelope = in.readNBytes(ENVELOPE_SIZE_BYTES);
-            if (envelope.length != ENVELOPE_SIZE_BYTES || in.available() < 2) {
-                throw new GeneralSecurityException("Corrupted archive: envelope truncated");
-            }
-            int signatureLength = in.readUnsignedShort();
-            signature = in.readNBytes(signatureLength);
-            if (signature.length != signatureLength) {
-                throw new GeneralSecurityException("Corrupted archive: signature truncated");
-            }
-            encryptedContent = in.readAllBytes();
-        }
-
-        SecretKey aesKey = RsaOaep.unwrapKey(rsaKeys.getPrivate(), envelope);
-
-        byte[] content = AesGcm.decrypt(aesKey, encryptedContent, metadataBytes);
-
-        if (!EcdsaSignature.verify(ecdsaKeys.getPublic(), concat(metadataBytes, content), signature)) {
-            throw new SignatureException("Invalid signature");
-        }
-
+        byte[] content = crypto.open(metadata.toBytes(), stored.get().content());
         return Optional.of(new Document(metadata, content));
     }
-
-
-
 
     public List<Metadata> listByClient(String idClient) throws IOException {
         return repository.findByIdClient(idClient);
     }
 
-    private static byte[] concat(byte[] first, byte[] second) throws IOException {
-        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        buffer.write(first);
-        buffer.write(second);
-        return buffer.toByteArray();
+    // Inventaire (E5) : comment chaque archive est protégée, lu sans aucune clé
+    public List<InventoryEntry> inventory() throws GeneralSecurityException, IOException {
+        List<InventoryEntry> entries = new ArrayList<>();
+        for (UUID id : repository.findAllIds()) {
+            Document stored = repository.findById(id).orElseThrow();
+            entries.add(new InventoryEntry(id, crypto.describe(stored.content())));
+        }
+        return entries;
     }
 
+    // Re-protège une archive avec les algorithmes d'écriture actuels ; renvoie false s'il n'y avait rien à faire
+    public boolean reprotect(UUID id) throws GeneralSecurityException, IOException {
+        Objects.requireNonNull(id, "Id cannot be null");
+
+        Document stored = repository.findById(id).orElseThrow();
+        Optional<byte[]> reprotected = crypto.reprotect(stored.metadata().toBytes(), stored.content());
+        if (reprotected.isEmpty()) {
+            return false;
+        }
+        repository.replaceContent(id, reprotected.get());
+        return true;
+    }
+
+    public record InventoryEntry(UUID idDocument, ProtectionInfo protection) {
+    }
 }

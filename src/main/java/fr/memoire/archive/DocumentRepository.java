@@ -10,4 +10,10 @@ public interface DocumentRepository {
     void save(Document document) throws IOException;
     Optional<Document> findById(UUID id)throws IOException;
     List<Metadata> findByIdClient(String idClient)throws IOException;
+
+    // Identifiants de tous les documents archivés (inventaire)
+    List<UUID> findAllIds() throws IOException;
+
+    // Remplace le contenu d'un document existant (re-protection)
+    void replaceContent(UUID id, byte[] newContent) throws IOException;
 }
