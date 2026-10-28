@@ -17,6 +17,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
+import fr.memoire.crypto.MlDsaScheme;
+import fr.memoire.crypto.MlKemScheme;
+import java.util.ArrayList;
+
 // Briques disponibles, chacune avec ses clés, retrouvées par leur identifiant
 public final class SchemeRegistry {
 
@@ -38,9 +42,15 @@ public final class SchemeRegistry {
         Objects.requireNonNull(keyDirectory, "Key directory cannot be null");
         KeyPair rsa = loadIfPresent(keyDirectory, "rsa", "RSA");
         KeyPair ecdsa = loadIfPresent(keyDirectory, "ecdsa", "EC");
+        KeyPair mlKem = loadIfPresent(keyDirectory, "mlkem", "ML-KEM");
+        KeyPair mlDsa = loadIfPresent(keyDirectory, "mldsa", "ML-DSA");
 
-        List<KeyProtectionScheme> keyProtections = rsa == null ? List.of() : List.of(new RsaOaepScheme(rsa));
-        List<SignatureScheme> signatures = ecdsa == null ? List.of() : List.of(new EcdsaScheme(ecdsa));
+        List<KeyProtectionScheme> keyProtections = new ArrayList<>();
+        List<SignatureScheme> signatures = new ArrayList<>();
+        if (rsa != null) keyProtections.add(new RsaOaepScheme(rsa));
+        if (mlKem != null) keyProtections.add(new MlKemScheme(mlKem));
+        if (ecdsa != null) signatures.add(new EcdsaScheme(ecdsa));
+        if (mlDsa != null) signatures.add(new MlDsaScheme(mlDsa));
         LegacyV1Reader legacy = (rsa == null || ecdsa == null) ? null : new LegacyV1Reader(rsa, ecdsa);
         return new SchemeRegistry(keyProtections, signatures, legacy);
     }
