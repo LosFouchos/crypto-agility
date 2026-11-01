@@ -10,17 +10,7 @@ Un service d'archivage de pièces justificative dans une compagnie d'assurance (
 - migrer les documents existant vers de nouveaux algorithmes.
 - Inventorier : savoir quels documents utilisent quels algorithmes.
 
-## Etape 1 : développer une application classique d'archivage
-*Avec la crypto classique en dure.*
 
-## Etape 2 : Migration direct vers la PQC
-*Sans couche d'abstraction*
-
-## Etape 3 : Migration vers PQC à l'aide de la couche d'abstraction
-*Comparaison avec l'étape 2*
-
-## Etape 4 : Tests complémentaires
-*Rétrocompatibilité, mode hybride, mauvais paramétrage*
 
 
 
